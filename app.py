@@ -17,7 +17,7 @@ def get_connection():
 def get_post(post_id):
     conn = get_connection()
     post = conn.execute('SELECT * FROM posts WHERE id = ?', (post_id,)).fetchone()
-    conn.close
+    conn.close()
     if post is None:
         abort(404)
     return post
@@ -42,13 +42,14 @@ def create():
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
-    if not title:
-        flash("Title is required!")
-        conn = get_connection()
-        conn.execute("INSERT INTO posts (title, content) VALUES (?, ?)", (title, content))
-        conn.commit()
-        conn.close()
-        return redirect(url_for('index'))
+        if not title:
+            flash("Title is required!")
+        else:
+            conn = get_connection()
+            conn.execute("INSERT INTO posts (title, content) VALUES (?, ?)", (title, content))
+            conn.commit()
+            conn.close()
+            return redirect(url_for('index'))
     return render_template("create.html")
 
 
@@ -62,7 +63,7 @@ def edit(id):
             flash('Title is required!')
         else:
             conn = get_connection()
-            conn.execute('UPDATE posts SET title = ?, content = ?'' WHERE id = ?', (title, content, id))
+            conn.execute('UPDATE posts SET title = ?, content = ? WHERE id = ?', (title, content, id))
             conn.commit()
             conn.close()
             return redirect(url_for('index'))
@@ -78,5 +79,7 @@ def delete(id):
     conn.close()
     flash(' "{}" was successfully deleted!'.format(post['title']))
     return redirect(url_for('index'))
+
+
 if __name__ == '__main__':
     app.run(debug=True)
