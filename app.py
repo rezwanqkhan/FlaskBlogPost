@@ -68,11 +68,15 @@ def create():
             return redirect(url_for('index'))
     return render_template("create.html")
 
-
 @app.route('/<int:id>/edit', methods=('GET', 'POST'))
 def edit(id):
     post = get_post(id)
-    if 'username' not in session or session['user_id'] != post['user_id']:
+    if 'username' not in session:
+        flash('You need to login to edit a post.')
+        return redirect(url_for('login'))
+
+    # Check if the user is the owner of the post or an admin
+    if session['user_id'] != post['user_id'] and not session.get('is_admin'):
         flash('You are not authorized to edit this post.')
         return redirect(url_for('index'))
 
@@ -91,17 +95,24 @@ def edit(id):
 
 
 @app.route('/<int:id>/delete', methods=('GET', 'POST'))
-def delete(id):
-    post = get_post(id)
-    if 'username' not in session or session['user_id'] != post['user_id']:
-        flash('You are not authorized to delete this post.')
+def delete_post(id):
+    if 'username' not in session or not session['is_admin']:
+        flash('You are not authorized to perform this action.')
         return redirect(url_for('index'))
 
+    # Check if the post exists
+    post = get_post(id)
+    if post is None:
+        flash('Post does not exist.')
+        return redirect(url_for('index'))
+
+    # Perform the deletion
     conn = get_connection()
     conn.execute('DELETE FROM posts WHERE id = ?', (id,))
     conn.commit()
     conn.close()
-    flash(' "{}" was successfully deleted!'.format(post['title']))
+
+    flash('Post deleted successfully.')
     return redirect(url_for('index'))
 
 
@@ -117,6 +128,13 @@ def login():
         if user:
             session['username'] = username
             session['user_id'] = user['id']
+
+            # Check if the user is an admin
+            if user['is_admin'] == 1:
+                session['is_admin'] = True
+            else:
+                session['is_admin'] = False
+
             flash(f'Logged in as {username} ({email})')
             return redirect(url_for('index'))
         else:
